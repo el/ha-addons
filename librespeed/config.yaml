@@ -1,5 +1,5 @@
 name: "LibreSpeed"
-version: "0.1.6"
+version: "0.1.7"
 slug: "librespeed"
 description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
 url: "https://github.com/el/ha-addons/tree/main/librespeed"
@@ -13,7 +13,11 @@ ingress_stream: true
 panel_admin: false
 panel_icon: mdi:speedometer
 map:
-  - "share:rw"
+  - addon_config:rw
+  - share:rw
+environment:
+  FM_HOME: /config
+  HOME: /config
 options:
   CUSTOM_RESULTS: false
   IPINFO_APIKEY: ""
