@@ -7,7 +7,7 @@ labels:
   io.hass.description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
   io.hass.arch: "{arch}"
   io.hass.type: "addon"
-  io.hass.version: "0.1.1" # This should match config.yaml version
+  io.hass.version: "0.1.2" # This should match config.yaml version
   org.opencontainers.image.title: "Home Assistant Add-on: LibreSpeed"
   org.opencontainers.image.description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
   org.opencontainers.image.source: "https://github.com/el/ha-addons"
