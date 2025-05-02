@@ -1,5 +1,5 @@
 name: "LibreSpeed"
-version: "0.1.2"
+version: "0.1.4"
 slug: "librespeed"
 description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
 url: "https://github.com/el/ha-addons/tree/main/librespeed"
@@ -8,6 +8,8 @@ arch:
   - "amd64"
 init: false
 ingress: true
+ingress_port: 80
+ingress_stream: true
 panel_admin: false
 panel_icon: mdi:speedometer
 map:
