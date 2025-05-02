@@ -1,0 +1,19 @@
+name: "LibreSpeed"
+version: "0.1.0"
+slug: "librespeed"
+description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
+url: "https://github.com/el/ha-addons/tree/main/librespeed"
+arch:
+  - "aarch64"
+  - "amd64"
+  - "armv7"
+init: false
+map:
+  - "share:rw"
+options: {}
+schema: {}
+image: "ghcr.io/el/ha-addons/librespeed/{arch}"
+ports:
+  "80/tcp": 8080
+ports_description:
+  "80/tcp": "LibreSpeed web interface"

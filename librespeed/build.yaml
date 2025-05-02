@@ -1,0 +1,14 @@
+# librespeed/build.yaml
+build_from:
+  aarch64: "linuxserver/librespeed:latest"
+  amd64: "linuxserver/librespeed:latest"
+labels:
+  io.hass.name: "LibreSpeed"
+  io.hass.description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
+  io.hass.arch: "{arch}"
+  io.hass.type: "addon"
+  io.hass.version: "0.1.0" # This should match config.yaml version
+  org.opencontainers.image.title: "Home Assistant Add-on: LibreSpeed"
+  org.opencontainers.image.description: "A self-hosted speedtest using the linuxserver/librespeed Docker image."
+  org.opencontainers.image.source: "https://github.com/el/ha-addons"
+  org.opencontainers.image.licenses: "MIT"
