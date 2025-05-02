@@ -4,7 +4,7 @@
 
 A self-hosted speedtest based on the `linuxserver/librespeed` Docker image.
 
-![LibreSpeed Screenshot](https://raw.githubusercontent.com/librespeed/speedtest/master/assets/images/librespeed.png)
+![LibreSpeed Screenshot](images/ss.png)
 
 ## About
 
@@ -19,7 +19,7 @@ This add-on uses the official [linuxserver/librespeed](https://hub.docker.com/r/
 3.  Add the following URL: `https://github.com/el/ha-addons` (or your specific repository URL).
 4.  Close the dialog. The "LibreSpeed" add-on should now appear in the store.
 5.  Click on "LibreSpeed", then click "Install".
-6.  Configure the port mapping if necessary. By default, port `8080` on your Home Assistant host is mapped to port `80` of the LibreSpeed container.
+6.  Configure the port mapping if necessary. By default, port `80` on your Home Assistant host is mapped to port `80` of the LibreSpeed container.
 7.  Start the add-on.
 
 ## Configuration
