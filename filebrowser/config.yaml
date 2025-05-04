@@ -1,7 +1,7 @@
 # filebrowser/config.yaml
-name: "FileBrowser l"
-version: "0.1.6l"
-slug: "filebrowserl"
+name: "FileBrowser m"
+version: "0.1.6m"
+slug: "filebrowserm"
 description: "Web File Browser with material design, accessible via Ingress."
 url: "https://github.com/el/ha-addons/tree/main/filebrowser" # Update if your repo path is different
 arch:

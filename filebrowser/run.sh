@@ -75,7 +75,7 @@ EXEC_ARGS=(
     "--root=${ROOT_DIRECTORY}"
     "--database=${DATABASE_FILE}"
     "--log=${LOG_LEVEL}"
-    "--tempdir=/tmp"
+    # "--tempdir=/tmp"
 )
 
 # --- Ingress Base URL ---
