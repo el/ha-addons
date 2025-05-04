@@ -124,8 +124,8 @@
       "networkdisks": "str?",
       "ssl": "bool"
     },
-    "slug": "filebrowser",
+    "slug": "filebrowsera",
     "udev": true,
     "url": "https://github.com/alexbelgium/hassio-addons",
-    "version": "2.32.0"
+    "version": "2.32.0a"
   }
