@@ -1,15 +1,18 @@
 # filebrowser/build.yaml
+# No changes needed here for Ingress itself.
+# Version label might be updated to match config.yaml if strictly followed.
 build_from:
-  aarch64: "filebrowser/filebrowser:v2.32.0"
-  amd64: "filebrowser/filebrowser:v2.32.0"
-  armv7: "filebrowser/filebrowser:v2.32.0"
+  aarch64: "filebrowser/filebrowser:latest"
+  amd64: "filebrowser/filebrowser:latest"
+  armv7: "filebrowser/filebrowser:latest"
+  armhf: "filebrowser/filebrowser:latest"
 labels:
-  io.hass.name: "File Browser"
-  io.hass.description: "filebrowser provides a file managing interface within a specified directory and it can be used to upload, delete, preview, rename and edit your files"
+  io.hass.name: "FileBrowser"
+  io.hass.description: "Web File Browser with material design, accessible via Ingress."
   io.hass.arch: "{arch}"
   io.hass.type: "addon"
-  io.hass.version: "2.32.0" # This should match config.yaml version
-  org.opencontainers.image.title: "Home Assistant Add-on: LibreSpeed"
-  org.opencontainers.image.description: "filebrowser provides a file managing interface within a specified directory and it can be used to upload, delete, preview, rename and edit your files"
+  io.hass.version: "0.1.1" # Match config.yaml version
+  org.opencontainers.image.title: "Home Assistant Add-on: FileBrowser"
+  org.opencontainers.image.description: "Web File Browser integrated into Home Assistant with Ingress support."
   org.opencontainers.image.source: "https://github.com/el/ha-addons"
   org.opencontainers.image.licenses: "MIT"
