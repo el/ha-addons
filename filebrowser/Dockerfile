@@ -2,18 +2,21 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# This command assumes 'run.sh' is in the same directory as this Dockerfile
-# (i.e., the root of the build context, which is typically your 'filebrowser/' addon directory).
+# Install jq for parsing /data/options.json in run.sh, and bash for easier scripting.
+# The official filebrowser image is Alpine based.
+# Add bash for more complex scripting, though basic run.sh might only need sh.
+# Ensure we are root to install packages. The filebrowser image might run as root.
+USER root
+RUN apk add --no-cache jq bash
+
 COPY run.sh /run.sh
 COPY rootfs/ /
 
-# ---- DIAGNOSTIC STEP ----
-# List the contents of the root directory to check if run.sh was copied.
-# The output of this command will appear in your Docker build log.
-RUN echo "--- Listing / contents after COPY ---" && ls -l / && echo "--- End of / listing ---"
-# ---- END DIAGNOSTIC STEP ----
+# Diagnostic step (optional, can be removed after confirming build)
+RUN echo "--- Listing / contents after COPY and jq/bash install ---" && ls -l / && ls -l /usr/bin/jq && ls -l /bin/bash && echo "--- End of / listing ---"
 
 RUN chmod a+x /run.sh
 
-# Explicitly set /run.sh as the entrypoint.
 ENTRYPOINT ["/run.sh"]
+# No USER instruction here, assuming filebrowser itself handles user if needed,
+# or runs as root which is common for its official image.

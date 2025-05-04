@@ -1,101 +1,132 @@
-#!/usr/bin/with-contenv bashio
+#!/usr/bin/env bash
+set -e # Exit immediately if a command exits with a non-zero status.
 
-bashio::log.info "Starting FileBrowser addon (run.sh version for 0.1.6)..."
+echo "[cont-init.d] Starting run.sh for FileBrowser (bashio-free version)..."
 
-CONFIG_ROOT_DIRECTORY=$(bashio::config 'root_directory')
-CONFIG_DATABASE_FILE=$(bashio::config 'database_file')
-CONFIG_LOG_LEVEL=$(bashio::config 'log_level')
-INTERNAL_PORT=80 # Fixed internal port for FileBrowser
+# --- Configuration Defaults ---
+DEFAULT_ROOT_DIRECTORY="/share"
+DEFAULT_DATABASE_FILE="/config/filebrowser/filebrowser.db"
+DEFAULT_LOG_LEVEL="info"
+DEFAULT_NO_AUTH="false"
+DEFAULT_ALLOW_COMMANDS="true"
+DEFAULT_ALLOW_EDIT="true"
+DEFAULT_ALLOW_NEW="true"
+DEFAULT_ALLOW_PUBLISH="false"
+DEFAULT_COMMANDS="git,svn,hg"
+INTERNAL_PORT=80
 
-# Ensure database directory exists
-DB_DIR=$(dirname "${CONFIG_DATABASE_FILE}")
-if [[ ! -d "$DB_DIR" ]]; then
-    bashio::log.info "Database directory ${DB_DIR} does not exist. Creating..."
-    if mkdir -p "$DB_DIR"; then
-        bashio::log.info "Database directory ${DB_DIR} created."
-    else
-        bashio::log.error "Failed to create database directory ${DB_DIR}."
-        bashio::exit.nok "Cannot create database directory."
-    fi
-fi
+CONFIG_FILE="/data/options.json"
 
-# --- Critical Debugging Information for Ingress ---
-RAW_INGRESS_PATH=$(bashio::addon.ingress_entry)
-bashio::log.info "--------------------------------------------------------------------"
-bashio::log.info "STEP 1: Raw INGRESS_ENTRY_PATH from bashio::addon.ingress_entry:"
-bashio::log.info "        '${RAW_INGRESS_PATH}'"
-bashio::log.info "--------------------------------------------------------------------"
+# --- Read Configuration from /data/options.json ---
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Reading configuration from $CONFIG_FILE"
+    ROOT_DIRECTORY=$(jq -r '.root_directory // empty' "$CONFIG_FILE")
+    DATABASE_FILE=$(jq -r '.database_file // empty' "$CONFIG_FILE")
+    LOG_LEVEL=$(jq -r '.log_level // empty' "$CONFIG_FILE")
+    NO_AUTH_STR=$(jq -r '.no_auth // "false"' "$CONFIG_FILE") # Ensure string output for boolean
 
-# Prepare FileBrowser arguments
-FB_BASEURL_VALUE="" # This will hold the path like /your/ingress/path
-
-if [[ -n "$RAW_INGRESS_PATH" ]]; then
-    TEMP_FB_BASEURL="$RAW_INGRESS_PATH"
-    # Ensure it starts with / (bashio should already provide this)
-    if [[ "${TEMP_FB_BASEURL:0:1}" != "/" ]];
-    then
-        bashio::log.warning "RAW_INGRESS_PATH ('${RAW_INGRESS_PATH}') does not start with a slash. Prepending one."
-        TEMP_FB_BASEURL="/${TEMP_FB_BASEURL}"
-    fi
-
-    # Ensure it doesn't end with a slash unless it's just "/"
-    # FileBrowser --baseurl: "must start with / and must not end with /"
-    if [[ "$TEMP_FB_BASEURL" != "/" && "${TEMP_FB_BASEURL: -1}" == "/" ]];
-    then
-        bashio::log.info "Removing trailing slash from '${TEMP_FB_BASEURL}' for --baseurl."
-        TEMP_FB_BASEURL="${TEMP_FB_BASEURL%/}"
-    fi
-    FB_BASEURL_VALUE="$TEMP_FB_BASEURL"
-    bashio::log.info "STEP 2: Processed base URL value for FileBrowser:"
-    bashio::log.info "        '${FB_BASEURL_VALUE}'"
+    ALLOW_COMMANDS_STR=$(jq -r '.allow_commands // "true"' "$CONFIG_FILE")
+    ALLOW_EDIT_STR=$(jq -r '.allow_edit // "true"' "$CONFIG_FILE")
+    ALLOW_NEW_STR=$(jq -r '.allow_new // "true"' "$CONFIG_FILE")
+    ALLOW_PUBLISH_STR=$(jq -r '.allow_publish // "false"' "$CONFIG_FILE")
+    COMMANDS=$(jq -r '.commands // empty' "$CONFIG_FILE")
 else
-    bashio::log.warning "INGRESS_ENTRY_PATH from bashio is empty. FileBrowser will not receive a --baseurl argument specific to Ingress."
+    echo "WARNING: Configuration file $CONFIG_FILE not found. Using default values."
+    NO_AUTH_STR="$DEFAULT_NO_AUTH"
+    ALLOW_COMMANDS_STR="$DEFAULT_ALLOW_COMMANDS"
+    ALLOW_EDIT_STR="$DEFAULT_ALLOW_EDIT"
+    ALLOW_NEW_STR="$DEFAULT_ALLOW_NEW"
+    ALLOW_PUBLISH_STR="$DEFAULT_ALLOW_PUBLISH"
 fi
-bashio::log.info "--------------------------------------------------------------------"
 
-# Construct exec arguments array
+# Use defaults if values are empty or not set
+ROOT_DIRECTORY=${ROOT_DIRECTORY:-$DEFAULT_ROOT_DIRECTORY}
+DATABASE_FILE=${DATABASE_FILE:-$DEFAULT_DATABASE_FILE}
+LOG_LEVEL=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
+COMMANDS=${COMMANDS:-$DEFAULT_COMMANDS}
+
+echo "[config] Root Directory: $ROOT_DIRECTORY"
+echo "[config] Database File: $DATABASE_FILE"
+echo "[config] Log Level: $LOG_LEVEL"
+echo "[config] No Auth: $NO_AUTH_STR"
+echo "[config] Allow Commands: $ALLOW_COMMANDS_STR"
+echo "[config] Allow Edit: $ALLOW_EDIT_STR"
+echo "[config] Allow New: $ALLOW_NEW_STR"
+echo "[config] Allow Publish: $ALLOW_PUBLISH_STR"
+echo "[config] Commands: $COMMANDS"
+echo "[config] Internal Port: $INTERNAL_PORT"
+
+# --- Ensure database directory exists ---
+DB_DIR=$(dirname "${DATABASE_FILE}")
+if [[ ! -d "$DB_DIR" ]]; then
+    echo "Database directory ${DB_DIR} does not exist. Creating..."
+    if mkdir -p "$DB_DIR"; then
+        echo "Database directory ${DB_DIR} created."
+    else
+        echo "ERROR: Failed to create database directory ${DB_DIR}." >&2
+        exit 1
+    fi
+fi
+
+# --- Prepare FileBrowser Arguments ---
 EXEC_ARGS=(
     "/filebrowser"
     "--address=0.0.0.0"
     "--port=${INTERNAL_PORT}"
-    "--root=${CONFIG_ROOT_DIRECTORY}"
-    "--database=${CONFIG_DATABASE_FILE}"
-    "--log=${CONFIG_LOG_LEVEL}"
+    "--root=${ROOT_DIRECTORY}"
+    "--database=${DATABASE_FILE}"
+    "--log=${LOG_LEVEL}"
 )
 
-if [[ -n "$FB_BASEURL_VALUE" ]]; then
+# --- Ingress Base URL ---
+# Home Assistant Supervisor sets the INGRESS_ENTRY env var for the addon's external path
+FB_BASEURL_VALUE=""
+if [ -n "$INGRESS_ENTRY" ]; then
+    echo "Found INGRESS_ENTRY environment variable: '$INGRESS_ENTRY'"
+    TEMP_FB_BASEURL="$INGRESS_ENTRY"
+    # FileBrowser's --baseurl must start with / and not end with / (unless it's just /)
+    if [[ "$TEMP_FB_BASEURL" != "/" && "${TEMP_FB_BASEURL: -1}" == "/" ]]; then
+        TEMP_FB_BASEURL="${TEMP_FB_BASEURL%/}"
+    fi
+    FB_BASEURL_VALUE="$TEMP_FB_BASEURL"
     EXEC_ARGS+=("--baseurl=${FB_BASEURL_VALUE}")
-fi
-
-if bashio::config.true 'no_auth'; then
-    EXEC_ARGS+=("--noauth")
-    bashio::log.warning "FileBrowser is running with NO AUTHENTICATION. This is insecure."
-fi
-
-# Check FileBrowser version for exact flags if issues arise (e.g. --disable-exec vs --no-command)
-if bashio::config.false 'allow_commands'; then
-    EXEC_ARGS+=("--disable-exec")
+    echo "[config] Using Ingress base URL for FileBrowser: '$FB_BASEURL_VALUE'"
 else
-    if bashio::config.has_value 'commands'; then
-        CONFIG_COMMANDS=$(bashio::config 'commands')
-        EXEC_ARGS+=("--commands=${CONFIG_COMMANDS}")
+    echo "INGRESS_ENTRY environment variable not found. FileBrowser will use root base URL (/). This might be okay for direct access or if Ingress isn't used."
+fi
+
+# --- Boolean Flags & Other Options ---
+if [[ "$NO_AUTH_STR" == "true" ]]; then
+    EXEC_ARGS+=("--noauth")
+    echo "WARNING: FileBrowser configured with NO AUTHENTICATION."
+fi
+
+if [[ "$ALLOW_COMMANDS_STR" == "false" ]]; then
+    EXEC_ARGS+=("--disable-exec") # Flag for disabling command execution
+else
+    # Only add --commands if allow_commands is true AND commands is not empty
+    if [[ -n "$COMMANDS" ]]; then
+        EXEC_ARGS+=("--commands=${COMMANDS}")
     fi
 fi
 
-if bashio::config.false 'allow_edit'; then
-    EXEC_ARGS+=("--no-edit") # Verify actual flag
+if [[ "$ALLOW_EDIT_STR" == "false" ]]; then
+    EXEC_ARGS+=("--no-edit") # Verify this flag with your FileBrowser version
 fi
 
-if bashio::config.true 'allow_publish'; then
+# 'allow_new' is often controlled by user permissions in FileBrowser rather than a global flag.
+# If a global flag exists for your version, add it here.
+
+if [[ "$ALLOW_PUBLISH_STR" == "true" ]]; then
     EXEC_ARGS+=("--allow-publish")
-    bashio::log.warning "FileBrowser is allowing file publishing. Ensure you understand the security implications."
+    echo "WARNING: FileBrowser configured to allow file publishing. Use with caution."
 fi
 
-bashio::log.info "STEP 3: Final arguments being passed to FileBrowser executable:"
+echo "--- Starting FileBrowser ---"
+echo "Final arguments for FileBrowser:"
 for arg in "${EXEC_ARGS[@]}"; do
-    bashio::log.info "  ${arg}"
+    printf "  %s\n" "${arg}" # Use printf for safer printing of args
 done
-bashio::log.info "--------------------------------------------------------------------"
-bashio::log.info "Attempting to execute FileBrowser..."
+echo "----------------------------------------------------"
 
 exec "${EXEC_ARGS[@]}"
