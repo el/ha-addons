@@ -1,74 +1,49 @@
-#!/usr/bin/env bash
-# Temporarily comment out 'set -e' to ensure the environment variable dump always happens
-# set -e
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
 
-echo "--- FileBrowser Addon run.sh ---"
-echo "Date: $(date)"
-echo "User: $(id)"
-echo ""
-echo "--- All Environment Variables at script start ---"
-env | sort # Dump all environment variables, sorted for readability
-echo "-----------------------------------------------"
-echo ""
+set -e
 
-set -e # Re-enable exit on error after the dump
+bashio::log.info "--- FileBrowser Addon run.sh (bashio version) ---"
+bashio::log.info "Date: $(date)"
+bashio::log.info "User: $(id)"
+bashio::log.info "Runtime PATH: '${PATH}'"
+bashio::log.info "---------------------------------"
 
-echo "Current Directory: $(pwd)"
-echo "Runtime PATH: '$PATH'"
-echo "---------------------------------"
+# --- Read Configuration using bashio ---
+ROOT_DIRECTORY=$(bashio::config 'root_directory')
+DATABASE_FILE=$(bashio::config 'database_file')
+LOG_LEVEL=$(bashio::config 'log_level')
+NO_AUTH=$(bashio::config 'no_auth')
+ALLOW_COMMANDS=$(bashio::config 'allow_commands')
+ALLOW_EDIT=$(bashio::config 'allow_edit')
+ALLOW_NEW=$(bashio::config 'allow_new')
+ALLOW_PUBLISH=$(bashio::config 'allow_publish')
+# 'commands' option was removed from config schema as it's not a direct FileBrowser flag.
 
-# --- Configuration Defaults ---
-DEFAULT_ROOT_DIRECTORY="/share"
-DEFAULT_DATABASE_FILE="/config/filebrowser/filebrowser.db"
-DEFAULT_LOG_LEVEL="info"
-DEFAULT_NO_AUTH="false"
-DEFAULT_ALLOW_COMMANDS="true"
-DEFAULT_ALLOW_EDIT="true"
-DEFAULT_ALLOW_NEW="true"
-DEFAULT_ALLOW_PUBLISH="false"
-INTERNAL_PORT=80
+INTERNAL_PORT=80 # FileBrowser will listen on this port
 
-CONFIG_FILE="/data/options.json"
-
-# --- Read Configuration from /data/options.json ---
-if [ -f "$CONFIG_FILE" ]; then
-    echo "Reading configuration from $CONFIG_FILE"
-    ROOT_DIRECTORY=$(jq -r '.root_directory // empty' "$CONFIG_FILE")
-    DATABASE_FILE=$(jq -r '.database_file // empty' "$CONFIG_FILE")
-    LOG_LEVEL=$(jq -r '.log_level // empty' "$CONFIG_FILE")
-    NO_AUTH_STR=$(jq -r '.no_auth // "false"' "$CONFIG_FILE")
-    ALLOW_COMMANDS_STR=$(jq -r '.allow_commands // "true"' "$CONFIG_FILE")
-    ALLOW_EDIT_STR=$(jq -r '.allow_edit // "true"' "$CONFIG_FILE")
-    ALLOW_NEW_STR=$(jq -r '.allow_new // "true"' "$CONFIG_FILE")
-    ALLOW_PUBLISH_STR=$(jq -r '.allow_publish // "false"' "$CONFIG_FILE")
-else
-    echo "WARNING: Configuration file $CONFIG_FILE not found. Using default values."
-    NO_AUTH_STR="$DEFAULT_NO_AUTH"
-    ALLOW_COMMANDS_STR="$DEFAULT_ALLOW_COMMANDS"
-fi
-
-# Use defaults if values are empty or not set
-ROOT_DIRECTORY=${ROOT_DIRECTORY:-$DEFAULT_ROOT_DIRECTORY}
-DATABASE_FILE=${DATABASE_FILE:-$DEFAULT_DATABASE_FILE}
-LOG_LEVEL=${LOG_LEVEL:-$DEFAULT_LOG_LEVEL}
-
-echo "[Config] Root Directory: $ROOT_DIRECTORY"
-echo "[Config] Database File: $DATABASE_FILE"
-echo "[Config] Log Level for FileBrowser: $LOG_LEVEL"
-echo "[Config] No Auth: $NO_AUTH_STR"
-echo "[Config] Allow Commands (feature toggle): $ALLOW_COMMANDS_STR"
+bashio::log.info "[Config] Root Directory: ${ROOT_DIRECTORY}"
+bashio::log.info "[Config] Database File: ${DATABASE_FILE}"
+bashio::log.info "[Config] Log Level for FileBrowser: ${LOG_LEVEL}"
+bashio::log.info "[Config] No Auth: ${NO_AUTH}"
+bashio::log.info "[Config] Allow Commands: ${ALLOW_COMMANDS}"
+# Add other config echoes if needed
 
 # --- Ensure database directory exists ---
 DB_DIR=$(dirname "${DATABASE_FILE}")
-# ... (rest of database directory creation logic as before) ...
 if [[ ! -d "$DB_DIR" ]]; then
-    echo "Database directory ${DB_DIR} does not exist. Creating..."
-    if mkdir -p "$DB_DIR"; then echo "Database directory ${DB_DIR} created."; \
-    else echo "ERROR: Failed to create database directory ${DB_DIR}." >&2; exit 1; fi
+    bashio::log.info "Database directory ${DB_DIR} does not exist. Creating..."
+    if mkdir -p "$DB_DIR"; then
+        bashio::log.info "Database directory ${DB_DIR} created."
+    else
+        bashio::log.error "Failed to create database directory ${DB_DIR}."
+        bashio::exit.nok "Cannot create database directory."
+    fi
 fi
 
 # --- Prepare FileBrowser Arguments ---
-EXECUTABLE_PATH="/filebrowser"
+# FileBrowser executable should be in PATH now, or we can use /usr/local/bin/filebrowser
+EXECUTABLE_PATH="/usr/local/bin/filebrowser" # Path where we installed it
 
 EXEC_ARGS=(
     "${EXECUTABLE_PATH}"
@@ -79,49 +54,49 @@ EXEC_ARGS=(
     "--log=${LOG_LEVEL}"
 )
 
-# --- Ingress Base URL ---
-FB_BASEURL_VALUE=""
-echo "Checking for SUPERVISOR_INGRESS_ENTRY environment variable..."
-if [ -n "$SUPERVISOR_INGRESS_ENTRY" ]; then # This is the standard env var
-    echo "Found SUPERVISOR_INGRESS_ENTRY: '$SUPERVISOR_INGRESS_ENTRY'"
-    TEMP_FB_BASEURL="$SUPERVISOR_INGRESS_ENTRY"
-    if [[ "$TEMP_FB_BASEURL" != "/" && "${TEMP_FB_BASEURL: -1}" == "/" ]]; then
-        TEMP_FB_BASEURL="${TEMP_FB_BASEURL%/}" # Remove trailing slash if not root
+# --- Ingress Base URL using bashio ---
+INGRESS_ENTRY_PATH=$(bashio::addon.ingress_entry)
+if [[ -n "$INGRESS_ENTRY_PATH" ]]; then
+    bashio::log.info "Found Ingress Entry Path via bashio: '${INGRESS_ENTRY_PATH}'"
+    # FileBrowser's --baseurl must start with / and not end with / (unless it's just /)
+    # bashio::addon.ingress_entry should provide it correctly formatted.
+    # Let's ensure no trailing slash if not root, as per FileBrowser docs.
+    if [[ "$INGRESS_ENTRY_PATH" != "/" && "${INGRESS_ENTRY_PATH: -1}" == "/" ]]; then
+        INGRESS_ENTRY_PATH="${INGRESS_ENTRY_PATH%/}"
     fi
-    FB_BASEURL_VALUE="$TEMP_FB_BASEURL"
-    EXEC_ARGS+=("--baseurl=${FB_BASEURL_VALUE}")
-    echo "[Config] Using Ingress base URL for FileBrowser: '$FB_BASEURL_VALUE'"
+    EXEC_ARGS+=("--baseurl=${INGRESS_ENTRY_PATH}")
+    bashio::log.info "[Config] Using Ingress base URL for FileBrowser: '${INGRESS_ENTRY_PATH}'"
 else
-    echo "SUPERVISOR_INGRESS_ENTRY env var NOT found. FileBrowser will use root base URL (/). This will cause issues with Ingress asset paths if not resolved."
+    bashio::log.warning "bashio::addon.ingress_entry did not return a path. FileBrowser will use root base URL (/). This may cause issues with Ingress asset paths."
 fi
 
 # --- Boolean Flags & Other Options ---
-if [[ "$NO_AUTH_STR" == "true" ]]; then
+if bashio::config.true 'no_auth'; then
     EXEC_ARGS+=("--noauth")
-    echo "WARNING: FileBrowser configured with NO AUTHENTICATION."
+    bashio::log.warning "FileBrowser configured with NO AUTHENTICATION."
 fi
 
-if [[ "$ALLOW_COMMANDS_STR" == "false" ]]; then
+if ! bashio::config.true 'allow_commands'; then # If allow_commands is false
     EXEC_ARGS+=("--disable-exec")
-    echo "[Config] Command execution will be disabled (--disable-exec)."
+    bashio::log.info "[Config] Command execution will be disabled (--disable-exec)."
 else
-    echo "[Config] Command execution is enabled (no --disable-exec flag)."
+    bashio::log.info "[Config] Command execution is enabled (no --disable-exec flag)."
 fi
 
-if [[ "$ALLOW_EDIT_STR" == "false" ]]; then
+if ! bashio::config.true 'allow_edit'; then
     EXEC_ARGS+=("--no-edit")
 fi
 
-if [[ "$ALLOW_PUBLISH_STR" == "true" ]]; then
+if bashio::config.true 'allow_publish'; then
     EXEC_ARGS+=("--allow-publish")
-    echo "WARNING: FileBrowser configured to allow file publishing. Use with caution."
+    bashio::log.warning "FileBrowser configured to allow file publishing. Use with caution."
 fi
 
-echo "--- Starting FileBrowser ---"
-echo "Final arguments for FileBrowser:"
+bashio::log.info "--- Starting FileBrowser ---"
+bashio::log.info "Final arguments for FileBrowser:"
 for arg in "${EXEC_ARGS[@]}"; do
-    printf "  %s\n" "${arg}"
+    bashio::log.info "  ${arg}"
 done
-echo "----------------------------------------------------"
+bashio::log.info "----------------------------------------------------"
 
 exec "${EXEC_ARGS[@]}"
