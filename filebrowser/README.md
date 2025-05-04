@@ -1,73 +1,69 @@
-# filebrowser/README.md
+# Home assistant add-on: Filebrowser
 
-# Home Assistant Add-on: FileBrowser
+[![Donate][donation-badge]](https://www.buymeacoffee.com/alexbelgium)
+[![Donate][paypal-badge]](https://www.paypal.com/donate/?hosted_button_id=DZFULJZTP3UQA)
 
-![FileBrowser](https://raw.githubusercontent.com/filebrowser/docs/master/static/img/screenshot.png)
+![Version](https://img.shields.io/badge/dynamic/json?label=Version&query=%24.version&url=https%3A%2F%2Fraw.githubusercontent.com%2Falexbelgium%2Fhassio-addons%2Fmaster%2Ffilebrowser%2Fconfig.json)
+![Ingress](https://img.shields.io/badge/dynamic/json?label=Ingress&query=%24.ingress&url=https%3A%2F%2Fraw.githubusercontent.com%2Falexbelgium%2Fhassio-addons%2Fmaster%2Ffilebrowser%2Fconfig.json)
+![Arch](https://img.shields.io/badge/dynamic/json?color=success&label=Arch&query=%24.arch&url=https%3A%2F%2Fraw.githubusercontent.com%2Falexbelgium%2Fhassio-addons%2Fmaster%2Ffilebrowser%2Fconfig.json)
 
-FileBrowser is a web-based file manager that allows you to browse, manage, and share files and folders. This add-on integrates FileBrowser into Home Assistant using the official `filebrowser/filebrowser` Docker image and supports access via Home Assistant Ingress.
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/9c6cf10bdbba45ecb202d7f579b5be0e)](https://www.codacy.com/gh/alexbelgium/hassio-addons/dashboard?utm_source=github.com&utm_medium=referral&utm_content=alexbelgium/hassio-addons&utm_campaign=Badge_Grade)
+[![GitHub Super-Linter](https://img.shields.io/github/actions/workflow/status/alexbelgium/hassio-addons/weekly-supelinter.yaml?label=Lint%20code%20base)](https://github.com/alexbelgium/hassio-addons/actions/workflows/weekly-supelinter.yaml)
+[![Builder](https://img.shields.io/github/actions/workflow/status/alexbelgium/hassio-addons/onpush_builder.yaml?label=Builder)](https://github.com/alexbelgium/hassio-addons/actions/workflows/onpush_builder.yaml)
+
+[donation-badge]: https://img.shields.io/badge/Buy%20me%20a%20coffee%20(no%20paypal)-%23d32f2f?logo=buy-me-a-coffee&style=flat&logoColor=white
+[paypal-badge]: https://img.shields.io/badge/Buy%20me%20a%20coffee%20with%20Paypal-0070BA?logo=paypal&style=flat&logoColor=white
+
+_Thanks to everyone having starred my repo! To star it click on the image below, then it will be on top right. Thanks!_
+
+[![Stargazers repo roster for @alexbelgium/hassio-addons](https://raw.githubusercontent.com/alexbelgium/hassio-addons/master/.github/stars2.svg)](https://github.com/alexbelgium/hassio-addons/stargazers)
+
+![downloads evolution](https://raw.githubusercontent.com/alexbelgium/hassio-addons/master/filebrowser/stats.png)
 
 ## About
 
-This add-on runs [FileBrowser](https://filebrowser.org/), providing a convenient way to manage your files directly from your Home Assistant setup. You can access it through the Home Assistant sidebar after installation.
-
-## Installation
-
-1.  Add your add-on repository URL to Home Assistant (Settings -> Add-ons -> Add-on Store -> Repositories). For example: `https://github.com/el/ha-addons` (update this URL if it's different).
-2.  Find "FileBrowser" in the Add-on Store and click "Install".
-3.  Enable "Show in sidebar" if you want to access FileBrowser directly from the Home Assistant menu.
-4.  Review and adjust configuration options under the "Configuration" tab if needed.
-5.  Start the add-on.
+Web based [File Browser](https://filebrowser.org/).
+This addon is based on the [docker image](https://hub.docker.com/r/filebrowser/filebrowser) from filebrowser.
 
 ## Configuration
 
-The add-on can be configured via the "Configuration" tab in the Home Assistant UI.
+Webui can be found at <http://homeassistant:port> at the port that you map to 8080 in the addon's options.
+Default username: "admin" and password: "admin"
 
-Available options:
+Network disk is mounted to `/share/storagecifs`.
 
-- **`root_directory`**: (string, default: `/share`)
-  The main directory that FileBrowser will serve and manage. Mapped paths like `/config`, `/media`, `/share` can be used.
-- **`database_file`**: (string, default: `/config/filebrowser/filebrowser.db`)
-  The path where FileBrowser will store its database file (e.g., user accounts, settings). This should be in a persistent location like `/config`.
-- **`log_level`**: (string, default: `info`)
-  Set the logging level for FileBrowser. Can be `debug`, `info`, `warn`, or `error`.
-- **`no_auth`**: (boolean, default: `false`)
-  Set to `true` to disable authentication. **Use with extreme caution!**
-- **`allow_commands`**: (boolean, default: `true`)
-  Allow executing commands (if FileBrowser is compiled with this feature).
-- **`allow_edit`**: (boolean, default: `true`)
-  Allow editing files.
-- **`allow_new`**: (boolean, default: `true`)
-  Allow creating new files/folders.
-- **`allow_publish`**: (boolean, default: `false`)
-  Allow creating share links to files. **Be careful as this can expose files publicly.**
-- **`commands`**: (string, default: `git,svn,hg`)
-  Comma-separated list of commands allowed to be executed if `allow_commands` is true.
+```yaml
+ssl: true/false
+certfile: fullchain.pem #ssl certificate
+keyfile: privkey.pem #sslkeyfile
+NoAuth: true/false #Remove password. Resets database when changed.
+disable_thumbnails: true/false (set disable_thumbnails to true or false ; default true for speed)
+localdisks: sda1 #put the hardware name of your drive to mount separated by commas, or its label. ex. sda1, sdb1, MYNAS...
+networkdisks: "//SERVER/SHARE" # optional, list of smbv2/3 servers to mount, separated by commas
+cifsusername: "username" # optional, smb username, same for all smb shares
+cifspassword: "password" # optional, smb password, same for all smb shares)
+base_folder: root folder # optional, default is /
+```
 
-**Note on Access:**
-The internal port for FileBrowser within the addon is fixed to `80`.
+## Installation
 
-- **Ingress (Recommended):** Access via the Home Assistant sidebar or the "Open Web UI" button on the addon page.
-- **Direct Access (Optional):** If you need direct network access, you can map a host port to the addon's internal port 80 in the "Network" section of the addon configuration (e.g., map host port `8080` to container port `80`).
+The installation of this add-on is pretty straightforward and not different in
+comparison to installing any other Hass.io add-on.
 
-## First Use
-
-1.  Once the add-on is started, access it via Ingress (sidebar or "Open Web UI").
-2.  If `no_auth` is `false` (default), the initial credentials are:
-    - **Username:** `admin`
-    - **Password:** `admin`
-      It is **strongly recommended** to change the default password immediately after your first login via the "Settings" menu within FileBrowser.
-
-## Troubleshooting
-
-- Check the addon logs in Home Assistant for messages from `run.sh` (prefixed with "STEP 1", "STEP 2", "STEP 3") and from FileBrowser itself.
-- If static assets (CSS, JavaScript) are not loading correctly via Ingress, examine the logged `INGRESS_ENTRY_PATH` and `baseurl` argument. If these seem correct, the issue might be with how FileBrowser handles the `baseurl` for static content.
+1. [Add my Hass.io add-ons repository][repository] to your Hass.io instance. [![Add repository on my Home Assistant][repository-badge]][repository-url]
+1. Install this add-on.
+1. Click the `Save` button to store your configuration.
+1. Start the add-on.
+1. Check the logs of the add-on to see if everything went well.
+1. Carefully configure the add-on to your preferences, see the [official documentation](https://filebrowser.org/configuration) for for that.
 
 ## Support
 
-- For issues specifically with this Home Assistant add-on, please open an issue on your GitHub repository (e.g., `https://github.com/el/ha-addons/issues`).
-- For issues related to FileBrowser itself, please refer to the [FileBrowser GitHub repository](https://github.com/filebrowser/filebrowser/issues).
+Create an issue on github, or ask on the [home assistant thread](https://community.home-assistant.io/t/home-assistant-addon-filebrowser/282108/3).
 
-## License
-
-This Home Assistant add-on is available under the MIT license. See the [LICENSE](LICENSE) file for details.
-FileBrowser and the `filebrowser/filebrowser` Docker image are distributed under their own respective licenses.
+[repository]: https://github.com/alexbelgium/hassio-addons
+[repository-badge]: https://img.shields.io/badge/Add%20repository%20to%20my-Home%20Assistant-41BDF5?logo=home-assistant&style=for-the-badge
+[repository-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Falexbelgium%2Fhassio-addons
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
