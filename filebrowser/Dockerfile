@@ -5,7 +5,10 @@ FROM ${BUILD_FROM}
 # This command assumes 'run.sh' is in the same directory as this Dockerfile
 # (i.e., the root of the build context, which is typically your 'filebrowser/' addon directory).
 # COPY run.sh /run.sh
+# ADD "https://raw.githubusercontent.com/el/ha-addons/master/filebrowser/run.sh" "/run.sh"
+ENV S6_STAGE2_HOOK=/run.sh
 ADD "https://raw.githubusercontent.com/el/ha-addons/master/filebrowser/run.sh" "/run.sh"
+
 COPY rootfs/ /
 
 # ---- DIAGNOSTIC STEP ----
@@ -17,4 +20,6 @@ RUN echo "--- Listing / contents after COPY ---" && ls -l / && echo "--- End of 
 RUN chmod a+x /run.sh
 
 # Explicitly set /run.sh as the entrypoint.
-ENTRYPOINT ["/run.sh"]
+# ENTRYPOINT ["/run.sh"]
+ENTRYPOINT [ "/usr/bin/env" ]
+CMD [ "/run.sh" ]
