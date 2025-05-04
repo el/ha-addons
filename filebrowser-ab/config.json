@@ -91,7 +91,7 @@
       "share:rw",
       "ssl:rw"
     ],
-    "name": "Filebrowser",
+    "name": "Filebrowser AB",
     "options": {
       "NoAuth": true,
       "certfile": "fullchain.pem",

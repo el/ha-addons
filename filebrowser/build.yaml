@@ -1,0 +1,15 @@
+# filebrowser/build.yaml
+build_from:
+  aarch64: "filebrowser/filebrowser:v2.32.0"
+  amd64: "filebrowser/filebrowser:v2.32.0"
+  armv7: "filebrowser/filebrowser:v2.32.0"
+labels:
+  io.hass.name: "File Browser"
+  io.hass.description: "filebrowser provides a file managing interface within a specified directory and it can be used to upload, delete, preview, rename and edit your files"
+  io.hass.arch: "{arch}"
+  io.hass.type: "addon"
+  io.hass.version: "2.32.0" # This should match config.yaml version
+  org.opencontainers.image.title: "Home Assistant Add-on: LibreSpeed"
+  org.opencontainers.image.description: "filebrowser provides a file managing interface within a specified directory and it can be used to upload, delete, preview, rename and edit your files"
+  org.opencontainers.image.source: "https://github.com/el/ha-addons"
+  org.opencontainers.image.licenses: "MIT"
