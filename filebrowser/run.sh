@@ -69,8 +69,9 @@ if [[ ! -d "$DB_DIR" ]]; then
 fi
 
 # --- Prepare FileBrowser Arguments ---
+# Note: The first argument is now "filebrowser" without the leading slash.
 EXEC_ARGS=(
-    "/filebrowser"
+    "filebrowser" # <--- Executable name, relying on PATH
     "--address=0.0.0.0"
     "--port=${INTERNAL_PORT}"
     "--root=${ROOT_DIRECTORY}"
@@ -79,12 +80,10 @@ EXEC_ARGS=(
 )
 
 # --- Ingress Base URL ---
-# Home Assistant Supervisor sets the INGRESS_ENTRY env var for the addon's external path
 FB_BASEURL_VALUE=""
-if [ -n "$INGRESS_ENTRY" ]; then
+if [ -n "$INGRESS_ENTRY" ]; then # INGRESS_ENTRY is set by Supervisor for Ingress-enabled addons
     echo "Found INGRESS_ENTRY environment variable: '$INGRESS_ENTRY'"
     TEMP_FB_BASEURL="$INGRESS_ENTRY"
-    # FileBrowser's --baseurl must start with / and not end with / (unless it's just /)
     if [[ "$TEMP_FB_BASEURL" != "/" && "${TEMP_FB_BASEURL: -1}" == "/" ]]; then
         TEMP_FB_BASEURL="${TEMP_FB_BASEURL%/}"
     fi
@@ -92,7 +91,7 @@ if [ -n "$INGRESS_ENTRY" ]; then
     EXEC_ARGS+=("--baseurl=${FB_BASEURL_VALUE}")
     echo "[config] Using Ingress base URL for FileBrowser: '$FB_BASEURL_VALUE'"
 else
-    echo "INGRESS_ENTRY environment variable not found. FileBrowser will use root base URL (/). This might be okay for direct access or if Ingress isn't used."
+    echo "INGRESS_ENTRY environment variable not found. FileBrowser will use root base URL (/). This is normal if not accessing via Ingress or if Ingress is not fully set up for this non-bashio script yet."
 fi
 
 # --- Boolean Flags & Other Options ---
@@ -102,20 +101,16 @@ if [[ "$NO_AUTH_STR" == "true" ]]; then
 fi
 
 if [[ "$ALLOW_COMMANDS_STR" == "false" ]]; then
-    EXEC_ARGS+=("--disable-exec") # Flag for disabling command execution
+    EXEC_ARGS+=("--disable-exec")
 else
-    # Only add --commands if allow_commands is true AND commands is not empty
     if [[ -n "$COMMANDS" ]]; then
         EXEC_ARGS+=("--commands=${COMMANDS}")
     fi
 fi
 
 if [[ "$ALLOW_EDIT_STR" == "false" ]]; then
-    EXEC_ARGS+=("--no-edit") # Verify this flag with your FileBrowser version
+    EXEC_ARGS+=("--no-edit")
 fi
-
-# 'allow_new' is often controlled by user permissions in FileBrowser rather than a global flag.
-# If a global flag exists for your version, add it here.
 
 if [[ "$ALLOW_PUBLISH_STR" == "true" ]]; then
     EXEC_ARGS+=("--allow-publish")
@@ -125,7 +120,7 @@ fi
 echo "--- Starting FileBrowser ---"
 echo "Final arguments for FileBrowser:"
 for arg in "${EXEC_ARGS[@]}"; do
-    printf "  %s\n" "${arg}" # Use printf for safer printing of args
+    printf "  %s\n" "${arg}"
 done
 echo "----------------------------------------------------"
 
