@@ -8,7 +8,7 @@ labels:
   io.hass.description: "Web File Browser with material design, accessible via Ingress."
   io.hass.arch: "{arch}" # This will be replaced by the build system
   io.hass.type: "addon"
-  io.hass.version: "0.1.6h" # Match config.yaml version
+  io.hass.version: "0.1.6i" # Match config.yaml version
   org.opencontainers.image.title: "Home Assistant Add-on: FileBrowser"
   org.opencontainers.image.description: "Web File Browser integrated into Home Assistant with Ingress support."
   org.opencontainers.image.source: "https://github.com/el/ha-addons" # Update if your repo path is different
