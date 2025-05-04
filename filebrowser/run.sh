@@ -28,23 +28,33 @@ ARGS="${ARGS} --database \"${CONFIG_DATABASE_FILE}\""
 ARGS="${ARGS} --log \"${CONFIG_LOG_LEVEL}\""
 
 # Handle Ingress base URL
-INGRESS_ENTRY_PATH=$(bashio::addon.ingress_entry)
-# Ensure INGRESS_ENTRY_PATH starts with a slash if not empty, and handle if it's already set
-if [[ -n "$INGRESS_ENTRY_PATH" ]]; then
-    # Ensure leading slash if not present, though bashio::addon.ingress_entry usually provides it
-    # Filebrowser expects baseurl to start with /
-    if [[ "${INGRESS_ENTRY_PATH:0:1}" != "/" ]]; then
-        INGRESS_ENTRY_PATH="/${INGRESS_ENTRY_PATH}"
+# bashio::addon.ingress_entry provides the base path for Ingress.
+# FileBrowser's --baseurl must start with / and not end with / (unless it's just /).
+RAW_INGRESS_PATH=$(bashio::addon.ingress_entry)
+bashio::log.info "Raw INGRESS_ENTRY_PATH from bashio: '${RAW_INGRESS_PATH}'"
+
+FB_BASEURL=""
+
+if [[ -n "$RAW_INGRESS_PATH" ]]; then
+    # Ensure it starts with / (bashio should already provide this, but double-check)
+    if [[ "${RAW_INGRESS_PATH:0:1}" != "/" ]]; then
+        bashio::log.warning "RAW_INGRESS_PATH does not start with a slash. Prepending one."
+        FB_BASEURL="/${RAW_INGRESS_PATH}"
+    else
+        FB_BASEURL="$RAW_INGRESS_PATH"
     fi
-    # Remove trailing slash if any, as FileBrowser might be sensitive
-    if [[ "${INGRESS_ENTRY_PATH}" != "/" ]] && [[ "${INGRESS_ENTRY_PATH: -1}" == "/" ]]; then
-        INGRESS_ENTRY_PATH="${INGRESS_ENTRY_PATH%/}"
+
+    # Ensure it doesn't end with a slash unless it's just "/"
+    if [[ "$FB_BASEURL" != "/" && "${FB_BASEURL: -1}" == "/" ]]; then
+        FB_BASEURL="${FB_BASEURL%/}"
     fi
-    ARGS="${ARGS} --baseurl \"${INGRESS_ENTRY_PATH}\""
-    bashio::log.info "Configuring FileBrowser with Ingress base URL: ${INGRESS_ENTRY_PATH}"
+
+    ARGS="${ARGS} --baseurl \"${FB_BASEURL}\""
+    bashio::log.info "Configuring FileBrowser with effective Ingress base URL: '${FB_BASEURL}'"
 else
-    bashio::log.info "No Ingress path found by bashio::addon.ingress_entry. FileBrowser will use root base URL (/). This might be an issue if Ingress is expected."
-    # Filebrowser defaults to "/" if --baseurl is not provided, which is fine for non-ingress or if INGRESS_ENTRY_PATH is somehow empty.
+    # This case should ideally not happen if Ingress is enabled in config.yaml
+    bashio::log.warning "INGRESS_ENTRY_PATH from bashio is empty. FileBrowser will use root base URL (/). This may cause issues if Ingress is the intended access method."
+    # FileBrowser defaults to "/" if --baseurl is not explicitly set, which is fine for non-Ingress.
 fi
 
 
@@ -53,8 +63,9 @@ if bashio::config.true 'no_auth'; then
     bashio::log.warning "FileBrowser is running with NO AUTHENTICATION. This is insecure."
 fi
 
+# FileBrowser v2.24.0+ uses --disable-exec. Check FileBrowser version for exact flags.
 if bashio::config.false 'allow_commands'; then
-    ARGS="${ARGS} --disable-exec" # FileBrowser v2.24.0+ uses --disable-exec
+    ARGS="${ARGS} --disable-exec"
 else
     if bashio::config.has_value 'commands'; then
         CONFIG_COMMANDS=$(bashio::config 'commands')
@@ -63,25 +74,15 @@ else
 fi
 
 if bashio::config.false 'allow_edit'; then
-    ARGS="${ARGS} --no-edit" # Assuming this flag still exists or equivalent
+    # Assuming --disable-edit or similar flag exists if 'no-edit' is not current
+    # Check FileBrowser documentation for the correct flag for your version
+    ARGS="${ARGS} --no-edit" # Placeholder, verify actual flag
 fi
 
-# FileBrowser v2.x flags might differ slightly.
-# For 'allow_new', it seems to be covered by permissions rather than a global flag.
-# Default permissions usually allow creation.
-# Let's assume 'allow_new' is controlled by user permissions within FileBrowser itself unless a specific global flag exists.
-# The `perm` flags during user creation or global config for new users are more relevant.
-# This addon doesn't manage users directly, relies on FileBrowser defaults.
-
 if bashio::config.true 'allow_publish'; then
-    ARGS="${ARGS} --allow-publish" # This flag might enable the feature globally
+    ARGS="${ARGS} --allow-publish"
     bashio::log.warning "FileBrowser is allowing file publishing. Ensure you understand the security implications."
 fi
 
 
 bashio::log.info "FileBrowser resolved arguments: ${ARGS}"
-bashio::log.info "Starting FileBrowser..."
-
-# The /filebrowser executable is in the PATH or at root in the base image.
-# shellcheck disable=SC2086
-exec /filebrowser ${ARGS}
