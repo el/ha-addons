@@ -1,6 +1,6 @@
 # filebrowser/config.yaml
 name: "FileBrowser"
-version: "0.1.6c"
+version: "0.1.6d"
 slug: "filebrowser"
 description: "Web File Browser with material design, accessible via Ingress."
 url: "https://github.com/el/ha-addons/tree/main/filebrowser" # Update if your repo path is different
@@ -8,7 +8,6 @@ arch:
   - "aarch64"
   - "amd64"
   - "armv7"
-  - "armhf"
 init: false # run.sh will be PID 1
 # image: "ghcr.io/el/ha-addons/filebrowser/{arch}" # Update if your GHCR path is different
 ports:
