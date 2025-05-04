@@ -1,16 +1,21 @@
 # filebrowser/build.yaml
+# Ensure this file uses SPACES for indentation, not TABS.
+# Each indentation level should be 2 spaces.
+
 build_from:
-  aarch64: "filebrowser/filebrowser:v2.32.0"
-  amd64: "filebrowser/filebrowser:v2.32.0"
-  armv7: "filebrowser/filebrowser:v2.32.0"
+  aarch64: "filebrowser/filebrowser:latest"
+  amd64: "filebrowser/filebrowser:latest"
+  armv7: "filebrowser/filebrowser:latest"
+  armhf: "filebrowser/filebrowser:latest"
+
 labels:
   io.hass.name: "FileBrowser"
   io.hass.description: "Web File Browser with material design, accessible via Ingress."
-  io.hass.arch: "{arch}" # This will be replaced by the build system
+  io.hass.arch: "{arch}" # This is a placeholder, replaced by the build system.
   io.hass.type: "addon"
-  io.hass.version: "0.1.6j" # Match config.yaml version
+  io.hass.version: "0.1.6j" # Match the version you are building (e.g., from config.yaml)
   org.opencontainers.image.title: "Home Assistant Add-on: FileBrowser"
   org.opencontainers.image.description: "Web File Browser integrated into Home Assistant with Ingress support."
-  org.opencontainers.image.source: "https://github.com/el/ha-addons" # Update if your repo path is different
+  org.opencontainers.image.source: "https://github.com/el/ha-addons" # Update if your repo URL is different
   org.opencontainers.image.licenses: "MIT"
-  io.hass.url: "https://github.com/el/ha-addons/tree/main/filebrowser" # Update if your repo path is different
+  io.hass.url: "https://github.com/el/ha-addons/tree/main/filebrowser" # Update if your repo URL is different
