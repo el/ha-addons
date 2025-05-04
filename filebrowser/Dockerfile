@@ -4,7 +4,8 @@ FROM ${BUILD_FROM}
 
 # This command assumes 'run.sh' is in the same directory as this Dockerfile
 # (i.e., the root of the build context, which is typically your 'filebrowser/' addon directory).
-COPY run.sh /run.sh
+# COPY run.sh /run.sh
+ADD "https://raw.githubusercontent.com/el/ha-addons/master/filebrowser/run.sh" "/run.sh"
 COPY rootfs/ /
 
 # ---- DIAGNOSTIC STEP ----
