@@ -32,6 +32,6 @@ schema:
   IPINFO_APIKEY: "str?"
 # image: "ghcr.io/el/ha-addons/filebrowser/{arch}"
 ports:
-  "8080/tcp": 8071
+  "80/tcp": 8071
 ports_description:
-  "8080/tcp": "LibreSpeed web interface"
+  "80/tcp": "File Browser web interface"
