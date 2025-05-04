@@ -17,7 +17,8 @@ ports_description:
   "80/tcp": "FileBrowser web interface (direct access - for advanced users or if Ingress fails)"
 ingress: true
 ingress_port: 80 # FileBrowser will listen on port 80 inside the container
-# ingress_entry: "/" # FileBrowser serves from its root, --baseurl will handle the Ingress path
+ingress_stream: true
+ingress_entry: "/" # FileBrowser serves from its root, --baseurl will handle the Ingress path
 panel_icon: "mdi:folder-multiple"
 map:
   - "share:rw"
