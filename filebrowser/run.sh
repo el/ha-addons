@@ -20,69 +20,86 @@ if [[ ! -d "$DB_DIR" ]]; then
     fi
 fi
 
-ARGS=""
-ARGS="${ARGS} --address 0.0.0.0"
-ARGS="${ARGS} --port ${INTERNAL_PORT}"
-ARGS="${ARGS} --root \"${CONFIG_ROOT_DIRECTORY}\""
-ARGS="${ARGS} --database \"${CONFIG_DATABASE_FILE}\""
-ARGS="${ARGS} --log \"${CONFIG_LOG_LEVEL}\""
-
-# Handle Ingress base URL
-# bashio::addon.ingress_entry provides the base path for Ingress.
-# FileBrowser's --baseurl must start with / and not end with / (unless it's just /).
+# --- Critical Debugging Information ---
 RAW_INGRESS_PATH=$(bashio::addon.ingress_entry)
-bashio::log.info "Raw INGRESS_ENTRY_PATH from bashio: '${RAW_INGRESS_PATH}'"
+bashio::log.info "--------------------------------------------------------------------"
+bashio::log.info "STEP 1: Raw INGRESS_ENTRY_PATH from bashio::addon.ingress_entry:"
+bashio::log.info "        '${RAW_INGRESS_PATH}'"
+bashio::log.info "--------------------------------------------------------------------"
 
-FB_BASEURL=""
+# Prepare FileBrowser arguments
+FB_BASEURL_VALUE="" # This will hold the path like /your/ingress/path
 
 if [[ -n "$RAW_INGRESS_PATH" ]]; then
-    # Ensure it starts with / (bashio should already provide this, but double-check)
-    if [[ "${RAW_INGRESS_PATH:0:1}" != "/" ]]; then
-        bashio::log.warning "RAW_INGRESS_PATH does not start with a slash. Prepending one."
-        FB_BASEURL="/${RAW_INGRESS_PATH}"
-    else
-        FB_BASEURL="$RAW_INGRESS_PATH"
+    TEMP_FB_BASEURL="$RAW_INGRESS_PATH"
+    # Ensure it starts with / (bashio should already provide this)
+    if [[ "${TEMP_FB_BASEURL:0:1}" != "/" ]];
+    then
+        bashio::log.warning "RAW_INGRESS_PATH ('${RAW_INGRESS_PATH}') does not start with a slash. Prepending one."
+        TEMP_FB_BASEURL="/${TEMP_FB_BASEURL}"
     fi
 
     # Ensure it doesn't end with a slash unless it's just "/"
-    if [[ "$FB_BASEURL" != "/" && "${FB_BASEURL: -1}" == "/" ]]; then
-        FB_BASEURL="${FB_BASEURL%/}"
+    # FileBrowser --baseurl: "must start with / and must not end with /"
+    if [[ "$TEMP_FB_BASEURL" != "/" && "${TEMP_FB_BASEURL: -1}" == "/" ]];
+    then
+        bashio::log.info "Removing trailing slash from '${TEMP_FB_BASEURL}' for --baseurl."
+        TEMP_FB_BASEURL="${TEMP_FB_BASEURL%/}"
     fi
-
-    ARGS="${ARGS} --baseurl \"${FB_BASEURL}\""
-    bashio::log.info "Configuring FileBrowser with effective Ingress base URL: '${FB_BASEURL}'"
+    FB_BASEURL_VALUE="$TEMP_FB_BASEURL"
+    bashio::log.info "STEP 2: Processed base URL value for FileBrowser:"
+    bashio::log.info "        '${FB_BASEURL_VALUE}'"
 else
-    # This case should ideally not happen if Ingress is enabled in config.yaml
-    bashio::log.warning "INGRESS_ENTRY_PATH from bashio is empty. FileBrowser will use root base URL (/). This may cause issues if Ingress is the intended access method."
-    # FileBrowser defaults to "/" if --baseurl is not explicitly set, which is fine for non-Ingress.
+    bashio::log.warning "INGRESS_ENTRY_PATH from bashio is empty. FileBrowser will not receive a --baseurl argument specific to Ingress. This might be problematic if Ingress is the intended access method."
+fi
+bashio::log.info "--------------------------------------------------------------------"
+
+# Construct exec arguments array
+# Paths like CONFIG_ROOT_DIRECTORY and CONFIG_DATABASE_FILE are directly used.
+# If they could contain spaces, bashio::config should handle quoting, but direct use in array is safer.
+EXEC_ARGS=(
+    "/filebrowser"
+    "--address=0.0.0.0"
+    "--port=${INTERNAL_PORT}"
+    "--root=${CONFIG_ROOT_DIRECTORY}"
+    "--database=${CONFIG_DATABASE_FILE}"
+    "--log=${CONFIG_LOG_LEVEL}"
+)
+
+if [[ -n "$FB_BASEURL_VALUE" ]]; then
+    EXEC_ARGS+=("--baseurl=${FB_BASEURL_VALUE}") # Add --baseurl=/actual/path as a single element
 fi
 
-
 if bashio::config.true 'no_auth'; then
-    ARGS="${ARGS} --noauth"
+    EXEC_ARGS+=("--noauth")
     bashio::log.warning "FileBrowser is running with NO AUTHENTICATION. This is insecure."
 fi
 
 # FileBrowser v2.24.0+ uses --disable-exec. Check FileBrowser version for exact flags.
 if bashio::config.false 'allow_commands'; then
-    ARGS="${ARGS} --disable-exec"
+    EXEC_ARGS+=("--disable-exec")
 else
     if bashio::config.has_value 'commands'; then
         CONFIG_COMMANDS=$(bashio::config 'commands')
-        ARGS="${ARGS} --commands \"${CONFIG_COMMANDS}\""
+        EXEC_ARGS+=("--commands=${CONFIG_COMMANDS}")
     fi
 fi
 
 if bashio::config.false 'allow_edit'; then
-    # Assuming --disable-edit or similar flag exists if 'no-edit' is not current
-    # Check FileBrowser documentation for the correct flag for your version
-    ARGS="${ARGS} --no-edit" # Placeholder, verify actual flag
+    # Verify actual flag for your FileBrowser version if 'no-edit' causes issues.
+    EXEC_ARGS+=("--no-edit")
 fi
 
 if bashio::config.true 'allow_publish'; then
-    ARGS="${ARGS} --allow-publish"
+    EXEC_ARGS+=("--allow-publish")
     bashio::log.warning "FileBrowser is allowing file publishing. Ensure you understand the security implications."
 fi
 
+bashio::log.info "STEP 3: Final arguments being passed to FileBrowser executable:"
+# Print arguments one per line for clarity in logs
+for arg in "${EXEC_ARGS[@]}"; do
+    bashio::log.info "  ${arg}"
+done
+bashio::log.info "--------------------------------------------------------------------"
 
-bashio::log.info "FileBrowser resolved arguments: ${ARGS}"
+exec "${EXEC_ARGS[@]}"
